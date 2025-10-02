@@ -41,6 +41,50 @@ export default function page() {
     fetchTasks();
   }, []);
 
+ const handleDeleteTask = async (id: string) => {
+  if (!confirm("คุณแน่ใจหรือว่าต้องการลบงานนี้?")) return;
+
+  // 1. ดึงข้อมูล task ที่จะลบ เพื่อเอา image_url มาใช้
+  const { data: taskData, error: fetchError } = await supabase
+    .from("task_tb")
+    .select("image_url")
+    .eq("id", id)
+    .single();
+
+  if (fetchError) {
+    alert("ไม่สามารถดึงข้อมูลรูปได้");
+    console.log("Fetch error:", fetchError);
+    return;
+  }
+
+  // 2. ถ้ามีรูป -> ลบออกจาก storage
+  if (taskData?.image_url) {
+    const fileImageName = taskData.image_url.split("/public/").pop();
+    if (fileImageName) {
+      const { error: storageError } = await supabase.storage
+        .from("task_bk")
+        .remove([`public/${fileImageName}`]);
+
+      if (storageError) {
+        console.log("Error deleting image:", storageError.message);
+        // ⚠️ ไม่ return ที่นี่นะ เพื่อให้ยังลบ row ได้แม้ลบไฟล์ fail
+      }
+    }
+  }
+
+  // 3. ลบข้อมูล task ออกจาก DB
+  const { error } = await supabase.from("task_tb").delete().eq("id", id);
+
+  if (error) {
+    alert("Error มีปัญหาในการลบงานนี้ โปรดลองใหม่อีกครั้ง");
+    console.log("Error deleting task:", error);
+  } else {
+    setTasks(tasks.filter((task) => task.id !== id));
+  }
+};
+
+
+
   return (
     <div className="p-20 ">
       <div className="flex flex-col items-center gap-10">
@@ -105,7 +149,10 @@ export default function page() {
                   >
                     Edit
                   </Link>
-                  <button className="text-red-500 hover:underline ml-4">
+                  <button
+                    className="text-red-500 hover:underline ml-4"
+                    onClick={() => handleDeleteTask(task.id)}
+                  >
                     Delete
                   </button>
                 </td>

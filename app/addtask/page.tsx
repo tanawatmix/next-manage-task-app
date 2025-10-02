@@ -1,30 +1,28 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import tasklogo from "../../assets/images/Iconcreme-Halloween-Cat.ico";
 import Link from "next/link";
-import { useState } from "react";
+
 import { supabase } from "../../lib/supabaseClient";
 import { useRouter } from "next/navigation";
 
 export default function Page() {
   const router = useRouter();
 
-  // State for form data
   const [title, setTitle] = useState<string>("");
   const [detail, setDetail] = useState<string>("");
   const [status, setStatus] = useState<boolean>(false);
   const [image, setImage] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false); // State for loading indicator
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Function to handle image selection and preview
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setImage(file);
-      // Revoke previous object URL to prevent memory leaks
+
       if (previewImage) {
         URL.revokeObjectURL(previewImage);
       }
@@ -32,53 +30,47 @@ export default function Page() {
     }
   };
 
-  // Function to handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (isSubmitting) return; // Prevent multiple submissions
+    if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
       let publicImageUrl = "";
 
-      // 1. Upload image if it exists
       if (image) {
-        // Create a more organized file path
         const imagePath = `public/${Date.now()}_${image.name}`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("task_bk") // Your bucket name
+          .from("task_bk")
           .upload(imagePath, image);
 
         if (uploadError) {
-          // Log the detailed error to the console for easier debugging
           console.error("Supabase Upload Error:", uploadError);
           alert("เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ: " + uploadError.message);
-          setIsSubmitting(false); // Re-enable the button
+          setIsSubmitting(false);
           return;
         }
 
-        // 2. Get the public URL of the uploaded image
         const { data: urlData } = supabase.storage
           .from("task_bk")
           .getPublicUrl(imagePath);
 
         if (!urlData || !urlData.publicUrl) {
-            throw new Error("Could not get public URL for the image.");
+          throw new Error("Could not get public URL for the image.");
         }
 
         publicImageUrl = urlData.publicUrl;
       }
 
-      // 3. Insert the new task into the database table
       const { data: insertData, error: insertError } = await supabase
-        .from("task_tb") // Your table name
+        .from("task_tb")
         .insert([
           {
             title: title,
             detail: detail,
             is_complete: status,
-            image_url: publicImageUrl, // Use the public URL from storage
+            image_url: publicImageUrl,
           },
         ])
         .select();
@@ -90,13 +82,12 @@ export default function Page() {
       }
 
       alert("เพิ่มงานสำเร็จ!");
-      router.push("/alltask"); // Navigate back to the task list
-
+      router.push("/alltask");
     } catch (err: any) {
       console.error("An unexpected error occurred:", err);
       alert("เกิดข้อผิดพลาดที่ไม่คาดคิด: " + (err?.message || String(err)));
     } finally {
-        setIsSubmitting(false); // Re-enable button in all cases
+      setIsSubmitting(false);
     }
   };
 
@@ -104,18 +95,26 @@ export default function Page() {
     <div className="p-4 sm:p-8 md:p-20 bg-gray-50 min-h-screen">
       <div className="max-w-3xl mx-auto bg-white p-6 sm:p-10 rounded-xl shadow-md">
         <div className="flex flex-col items-center">
-          <Image src={tasklogo} alt="Task Logo" width={80} height={80} priority />
+          <Image
+            src={tasklogo}
+            alt="Task Logo"
+            width={80}
+            height={80}
+            priority
+          />
           <h1 className="text-3xl font-bold mt-5 mb-7 text-gray-800">
             Manage Task App
           </h1>
         </div>
-        
         <h2 className="text-2xl font-semibold text-center text-gray-700 mb-6 border-b pb-4">
           ➕ เพิ่มงานใหม่
         </h2>
         <form className="w-full space-y-6" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="title" className="block mb-2 font-medium text-gray-700">
+            <label
+              htmlFor="title"
+              className="block mb-2 font-medium text-gray-700"
+            >
               ชื่องาน
             </label>
             <input
@@ -129,7 +128,10 @@ export default function Page() {
             />
           </div>
           <div>
-            <label htmlFor="detail" className="block mb-2 font-medium text-gray-700">
+            <label
+              htmlFor="detail"
+              className="block mb-2 font-medium text-gray-700"
+            >
               รายละเอียด
             </label>
             <textarea
@@ -143,7 +145,9 @@ export default function Page() {
             ></textarea>
           </div>
           <div>
-            <label className="block mb-2 font-medium text-gray-700">อัปโหลดรูป</label>
+            <label className="block mb-2 font-medium text-gray-700">
+              อัปโหลดรูป
+            </label>
             <input
               id="fileInput"
               type="file"
@@ -170,7 +174,10 @@ export default function Page() {
             )}
           </div>
           <div>
-            <label htmlFor="status" className="block mb-2 font-medium text-gray-700">
+            <label
+              htmlFor="status"
+              className="block mb-2 font-medium text-gray-700"
+            >
               สถานะ
             </label>
             <select
@@ -189,7 +196,7 @@ export default function Page() {
               disabled={isSubmitting}
               className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 font-bold text-lg transition disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'กำลังเพิ่มข้อมูล...' : 'เพิ่มงาน'}
+              {isSubmitting ? "กำลังเพิ่มข้อมูล..." : "เพิ่มงาน"}
             </button>
           </div>
         </form>
